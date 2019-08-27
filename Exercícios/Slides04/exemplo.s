@@ -109,7 +109,54 @@ Start
     SDIV R7,R12,R11         ; R7 := ((signed)R12)/R11
     UDIV R8,R12,R11         ; R8 := ((unsigned)R12)/R11
     
+    ; Exercícios bloco if-then ;
+    MOV R0, #10
+    CMP R0, #9
+    ITTE GE
+        MOVGE R1, #50
+        ADDGE R2, R1, #32
+        MOVLT R3, #75
+    CMP R0, #11
+    ITTE GE
+        MOVGE R1, #50
+        ADDGE R2, R1, #32
+        MOVLT R3, #75
     
+    ; Exercícios pilha (stack) ;
+    MOV R0,#10
+    MOV R1,#0xCC22
+    MOVT R1,#0xFF11
+    MOV R2,#1234
+    MOV R3,#0x300
+    PUSH {R0}
+    PUSH {R1-R3}
+    MOV R1,#60
+    MOV R2,#0x1234
+    POP {R3}
+    POP {R2}
+    POP {R1}
+    POP {R0}
+    
+    ; Exercícios de instruções de salto ;
+
+    MOV R0,#10
+loop1
+    ADD R0,R0,#5
+    CMP R0,#50
+    BNE loop1
+    BL func1
+    NOP
+    B fim
+
+func1
+    MOV R1,R0
+    CMP R1,#50
+    ITE LT
+        ADDLT R1,#5
+        MOVGE R1,#-50
+    BX LR
+    
+fim
     NOP
     ALIGN                   ; garante que o fim da seção está alinhada 
     END                     ; fim do arquivo
