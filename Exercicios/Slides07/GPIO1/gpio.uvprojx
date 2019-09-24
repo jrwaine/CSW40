@@ -10,14 +10,14 @@
       <TargetName>Target 1</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
-      <pCCUsed>5060061::V5.06 update 1 (build 61)::ARMCC</pCCUsed>
+      <pCCUsed>5060528::V5.06 update 5 (build 528)::ARMCC</pCCUsed>
       <TargetOption>
         <TargetCommonOption>
           <Device>TM4C1294NCPDT</Device>
           <Vendor>Texas Instruments</Vendor>
           <PackID>Keil.TM4C_DFP.1.1.0</PackID>
           <PackURL>http://www.keil.com/pack/</PackURL>
-          <Cpu>IROM(0x00000000,0x100000) IRAM(0x20000000,0x040000) CPUTYPE("Cortex-M4") FPU2 CLOCK(12000000) ELITTLE</Cpu>
+          <Cpu>IRAM(0x20000000,0x040000) IROM(0x00000000,0x100000) CPUTYPE("Cortex-M4") FPU2 CLOCK(12000000) ELITTLE</Cpu>
           <FlashUtilSpec></FlashUtilSpec>
           <StartupFile></StartupFile>
           <FlashDriverDll>UL2CM3(-S0 -C0 -P0 -FD20000000 -FC1000 -FN1 -FF0TM4C129_1024 -FS00 -FL0100000 -FP0($$Device:TM4C1294NCPDT$Flash\TM4C129_1024.FLM))</FlashDriverDll>
@@ -48,7 +48,7 @@
             <InvalidFlash>1</InvalidFlash>
           </TargetStatus>
           <OutputDirectory>.\Objects\</OutputDirectory>
-          <OutputName>proj</OutputName>
+          <OutputName>gpio</OutputName>
           <CreateExecutable>1</CreateExecutable>
           <CreateLib>0</CreateLib>
           <CreateHexFile>0</CreateHexFile>
@@ -88,7 +88,7 @@
             <nStopA1X>0</nStopA1X>
             <nStopA2X>0</nStopA2X>
           </AfterMake>
-          <SelectedForBatchBuild>1</SelectedForBatchBuild>
+          <SelectedForBatchBuild>0</SelectedForBatchBuild>
           <SVCSIdString></SVCSIdString>
         </TargetCommonOption>
         <CommonProperty>
@@ -322,7 +322,7 @@
             <wLevel>2</wLevel>
             <uThumb>0</uThumb>
             <uSurpInc>0</uSurpInc>
-            <uC99>0</uC99>
+            <uC99>1</uC99>
             <useXO>0</useXO>
             <v6Lang>1</v6Lang>
             <v6LangP>1</v6LangP>
@@ -376,14 +376,19 @@
           <GroupName>Source Group 1</GroupName>
           <Files>
             <File>
-              <FileName>bubble_sort.s</FileName>
-              <FileType>2</FileType>
-              <FilePath>.\bubble_sort.s</FilePath>
-            </File>
-            <File>
               <FileName>startup.s</FileName>
               <FileType>2</FileType>
               <FilePath>.\startup.s</FilePath>
+            </File>
+            <File>
+              <FileName>main.s</FileName>
+              <FileType>2</FileType>
+              <FilePath>.\main.s</FilePath>
+            </File>
+            <File>
+              <FileName>gpio.s</FileName>
+              <FileType>2</FileType>
+              <FilePath>.\gpio.s</FilePath>
             </File>
           </Files>
         </Group>

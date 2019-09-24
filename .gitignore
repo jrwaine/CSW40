@@ -3,3 +3,13 @@
 *.o
 *.tmp
 *.out
+*.stackdump
+*.lst
+*.map
+*.htm
+*.d
+*.lnp
+*.crf
+*.iex
+*.axf
+*.dep
