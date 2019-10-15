@@ -284,6 +284,18 @@ GPIO_PORTQ_PP_R         EQU    0x40066FC0
 GPIO_PORTQ_PC_R         EQU    0x40066FC4
 GPIO_PORTQ              EQU    2_100000000000000
 
+; ENDEREÇOS DE MEMÓRIA DA TABUADA (contem os multiplicadores)
+CONT_TAB1_ADDR			EQU 0x20000008
+CONT_TAB2_ADDR			EQU 0x20000010
+CONT_TAB3_ADDR			EQU 0x20000018
+CONT_TAB4_ADDR			EQU 0x20000020
+CONT_TAB5_ADDR			EQU 0x20000028
+CONT_TAB6_ADDR			EQU 0x20000030
+CONT_TAB7_ADDR			EQU 0x20000038
+CONT_TAB8_ADDR			EQU 0x20000040
+CONT_TAB9_ADDR			EQU 0x20000048
+NUM_TAB_ADDR			EQU 0x20000050 ; numero da tabuada atual
+RESULT_TAB_ADDR			EQU 0x20000058 ; resutlado da tabuada atual
 
 ; -------------------------------------------------------------------------------
 ; �rea de C�digo - Tudo abaixo da diretiva a seguir ser� armazenado na mem�ria de 
@@ -514,6 +526,82 @@ WrtDig
 	STR R0,[R2]
 	STR R1,[R3]
 	BX LR
+
 	
-    ALIGN                           ; garante que o fim da se��o est� alinhada 
+; Altera: R0, R1
+; Zera todas as tabuadas e o resultado dela
+ZeraTabs
+	PUSH {R0, R1}
+    MOV     R1, #2_0000
+	LDR     R0, =CONT_TAB1_ADDR
+	STRB    R1, [R0]
+	LDR     R0, =CONT_TAB2_ADDR
+	STRB    R1, [R0]
+	LDR     R0, =CONT_TAB3_ADDR
+	STRB    R1, [R0]
+	LDR     R0, =CONT_TAB4_ADDR
+	STRB    R1, [R0]
+	LDR     R0, =CONT_TAB5_ADDR
+	STRB    R1, [R0]
+	LDR     R0, =CONT_TAB6_ADDR
+	STRB    R1, [R0]
+	LDR     R0, =CONT_TAB7_ADDR
+	STRB    R1, [R0]
+	LDR     R0, =CONT_TAB8_ADDR
+	STRB    R1, [R0]
+	LDR     R0, =CONT_TAB9_ADDR
+	STRB    R1, [R0]
+	LDR     R1, =RESULT_TAB_ADDR
+	STRB    R1, [R0]
+	POP {R0, R1}
+	BX LR
+
+
+; Altera: R0-R3
+; Mostra a mensagem da tabuada
+DisplayMsg
+	; Carrega o numero atual da tabuada
+    LDRB R0, =NUM_TAB_ADDR
+    LDRB R1,[R0]
+	; Carrega o resultado da tabela atual
+	LDRB R0, =RESULT_TAB_ADDR
+	LDRB R2,[R0]
+	; Calcula o multiplicador da tabela atual
+	UDIV R3,R2,R1 ; R3 := R2/R1
+	
+	; Descobrir como faz o display...
+	BX LR
+
+
+; Trata interrupcao do teclado
+IntTeclado
+	PUSH {R0, R1, R2} ; os registradortes que sao usados
+	; Carrega o numero do teclado para R1...
+	
+	; Salva a tabuada atual
+	LDR R0, =NUM_TAB_ADDR
+	STRB R1, [R0]
+	
+	MOVT R0,0x2000  	; Carrega o endereço base
+	; Calcula o endereço da tabuada a ser utilizada
+	ADD R0, R1 LSL 3 	; R0 := R0 + R1 << 3
+	; Carrega o valor previo da tabuada
+	LDRB R2,[R0] 		; R2 := [R0]
+	; Soma um ao valor
+	ADD R2, 1
+	; Ve se estourou a tabuada
+	CMP R2, 10
+	IT EQ
+		MOVEQ R2, 0
+	; Salva o novo valor da tabuada do numero
+	STRB R2,[R0] 		; [R0] := R2
+	MUL R1, R2			; R1 := R1*R2
+	; Salva o valor resultante a ser mostrado
+	LDR R0, =RESULT_TAB_ADDR
+	STRB R1, [R0]
+	
+	POP {R0, R1, R2} ; os registradortes que sao usados
+	BX LR
+	
+	ALIGN                           ; garante que o fim da se��o est� alinhada 
     END                             ; fim do arquivo
