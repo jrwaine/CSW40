@@ -285,15 +285,15 @@ GPIO_PORTQ_PC_R         EQU    0x40066FC4
 GPIO_PORTQ              EQU    2_100000000000000
 
 ; ENDEREÇOS DE MEMÓRIA DA TABUADA (contem os multiplicadores)
-CONT_TAB1_ADDR			EQU 0x20000008
-CONT_TAB2_ADDR			EQU 0x20000010
-CONT_TAB3_ADDR			EQU 0x20000018
-CONT_TAB4_ADDR			EQU 0x20000020
-CONT_TAB5_ADDR			EQU 0x20000028
-CONT_TAB6_ADDR			EQU 0x20000030
-CONT_TAB7_ADDR			EQU 0x20000038
-CONT_TAB8_ADDR			EQU 0x20000040
-CONT_TAB9_ADDR			EQU 0x20000048
+CONT_TAB1_ADDR			EQU 0x20000001
+CONT_TAB2_ADDR			EQU 0x20000002
+CONT_TAB3_ADDR			EQU 0x20000003
+CONT_TAB4_ADDR			EQU 0x20000004
+CONT_TAB5_ADDR			EQU 0x20000005
+CONT_TAB6_ADDR			EQU 0x20000006
+CONT_TAB7_ADDR			EQU 0x20000007
+CONT_TAB8_ADDR			EQU 0x20000008
+CONT_TAB9_ADDR			EQU 0x20000009
 NUM_TAB_ADDR			EQU 0x20000050 ; numero da tabuada atual
 RESULT_TAB_ADDR			EQU 0x20000058 ; resutlado da tabuada atual
 
@@ -308,6 +308,15 @@ RESULT_TAB_ADDR			EQU 0x20000058 ; resutlado da tabuada atual
 		EXPORT PortJ_Input          ; Permite chamar PortJ_Input de outro arquivo
 		EXPORT WrtDig
 		EXPORT SetTrans
+		EXPORT VarreTeclado
+		EXPORT IntTeclado
+		EXPORT DisplayMsg	
+		EXPORT ZeraTabs
+		EXPORT IniTabs
+		EXPORT setTeclado
+		EXPORT IniDisplay
+		IMPORT SysTick_Wait1us
+	
 
 ;--------------------------------------------------------------------------------
 ; Fun��o GPIO_Init
@@ -382,10 +391,10 @@ EsperaGPIO  LDR     R1, [R0]						;L� da mem�ria o conte�do do endere�o 
 			MOV     R1, #2_111111111					
             STR     R1, [R0]
 			LDR     R0, =GPIO_PORTL_DIR_R
-			MOV     R1, #2_00000000		; CHECAR COMO É O MATRICIAL				
+			MOV     R1, #2_00000000
             STR     R1, [R0]
 			LDR     R0, =GPIO_PORTM_DIR_R
-			MOV     R1, #2_00000111		; CHECAR COMO É O MATRICIAL			
+			MOV     R1, #2_11110111		
             STR     R1, [R0]						
 			LDR     R0, =GPIO_PORTP_DIR_R		
 			MOV     R1, #2_00100000					
@@ -444,7 +453,12 @@ EsperaGPIO  LDR     R1, [R0]						;L� da mem�ria o conte�do do endere�o 
 			MOV     R1, #2_00000011						;Habilitar funcionalidade digital de resistor de pull-up 
                                                         ;nos bits 0 e 1
             STR     R1, [R0]							;Escreve no registrador da mem�ria do resistor de pull-up
-			; MUDAR PARA O MATRICIAL, VER QUAL
+			
+			LDR     R0, =GPIO_PORTL_PUR_R			;Carrega o endere�o do PUR para a porta L
+			MOV     R1, #2_00001111						;Habilitar funcionalidade digital de resistor de pull-up 
+                                                        ;nos bits 0 a 3
+            STR     R1, [R0]							;Escreve no registrador da mem�ria do resistor de pull-up
+			
             
 ;retorno            
 			BX      LR
@@ -527,9 +541,145 @@ WrtDig
 	STR R1,[R3]
 	BX LR
 
+	LTORG 
+
+AtivaEscrita
+	LDR R0, =GPIO_PORTM_DATA_R
+	LDR R1,[R0]
+	AND R1, #2_11111000
+	ORR R1, #2_00000100
+	STRB R1,[R0]
+	BX LR
+
+AtivaReset
+	LDR R0, =GPIO_PORTM_DATA_R
+	LDR R1,[R0]
+	AND R1, #2_11111110
+	ORR R1, #2_00000001
+	STRB R1,[R0]
+	BX LR
+
+DesativaRS
+	LDR R0, =GPIO_PORTM_DATA_R
+	LDR R1,[R0]
+	AND R1, #2_11111110
+	ORR R1, #2_00000000
+	STRB R1,[R0]
+	BX LR
+
+AtivaEnable
+	LDR R0, =GPIO_PORTM_DATA_R
+	LDR R1,[R0]
+	AND R1, #2_11111011
+	ORR R1, #2_00000100
+	STRB R1,[R0]
+	BX LR
+
+DesativaEnable
+	LDR R0, =GPIO_PORTM_DATA_R
+	LDR R1,[R0]
+	AND R1, #2_11111011
+	ORR R1, #2_00000000
+	STRB R1,[R0]
+	BX LR
+
+DesativaTudo
+	LDR R0, =GPIO_PORTM_DATA_R
+	LDR R1,[R0]
+	AND R1, #2_11111000
+	ORR R1, #2_00000000
+	STRB R1,[R0]
+	BX LR
+
+; R1 eh caracter em ASC2
+EscreveChar
+	PUSH{R0, R1, LR}
+	LDR R0,=GPIO_PORTK_DATA_R
+	STR R1,[R0]
+	BL AtivaEscrita
+	BL AtivaEnable
+	BL AtivaReset
+	MOV R0,#10
+	BL SysTick_Wait1us
+	BL DesativaTudo
+	MOV R0,#40
+	BL SysTick_Wait1us
+	POP{R0, R1, PC}
 	
-; Altera: R0, R1
-; Zera todas as tabuadas e o resultado dela
+LimpaDisplay
+	PUSH{LR}
+	BL AtivaEscrita
+	;Limpar o display e levar o cursor para o home
+	MOV R1,#0x01
+	STR R1,[R2]
+	BL DesativaEnable
+	MOV R0, #80
+	BL SysTick_Wait1us
+	POP {PC}
+	
+IniDisplay
+	PUSH {LR}
+	BL AtivaEscrita
+	; Inicializar no modo 2 linhas / caractere matriz 5x7
+	LDR R2, =GPIO_PORTK_DATA_R
+	MOV R1, #0x38
+	STR R1, [R2]
+	BL DesativaEnable
+	MOV R0, #80
+	BL SysTick_Wait1us
+	BL AtivaEscrita
+	; Cursor com autoincremento para direita
+	MOV R1,#0x06
+	STR R1,[R2]
+	BL DesativaEnable
+	MOV R0, #80
+	BL SysTick_Wait1us
+	; Configurar o cursor (habilitar o display + cursor + não-pisca)
+	MOV R1,#0x0E
+	STR R1,[R2]
+	BL DesativaEnable
+	MOV R0, #80
+	BL SysTick_Wait1us
+	BL AtivaEscrita
+	;Limpar o display e levar o cursor para o home
+	MOV R1,#0x01
+	STR R1,[R2]
+	BL DesativaEnable
+	MOV R0, #80
+	BL SysTick_Wait1us
+	POP {PC}
+	
+	
+IniTabs
+	PUSH {R0, R1}
+    MOV     R1, #2_1010
+	LDR     R0, =CONT_TAB1_ADDR
+	STRB    R1, [R0]
+	LDR     R0, =CONT_TAB2_ADDR
+	STRB    R1, [R0]
+	LDR     R0, =CONT_TAB3_ADDR
+	STRB    R1, [R0]
+	LDR     R0, =CONT_TAB4_ADDR
+	STRB    R1, [R0]
+	LDR     R0, =CONT_TAB5_ADDR
+	STRB    R1, [R0]
+	LDR     R0, =CONT_TAB6_ADDR
+	STRB    R1, [R0]
+	LDR     R0, =CONT_TAB7_ADDR
+	STRB    R1, [R0]
+	LDR     R0, =CONT_TAB8_ADDR
+	STRB    R1, [R0]
+	LDR     R0, =CONT_TAB9_ADDR
+	STRB    R1, [R0]
+	MOV     R1, #2_0000
+	LDR     R0, =RESULT_TAB_ADDR
+	STRB    R1, [R0]
+	LDR     R0, =NUM_TAB_ADDR
+	STRB    R1, [R0]
+	POP {R0, R1}
+	BX LR
+
+	
 ZeraTabs
 	PUSH {R0, R1}
     MOV     R1, #2_0000
@@ -551,29 +701,43 @@ ZeraTabs
 	STRB    R1, [R0]
 	LDR     R0, =CONT_TAB9_ADDR
 	STRB    R1, [R0]
-	LDR     R1, =RESULT_TAB_ADDR
+	LDR     R0, =RESULT_TAB_ADDR
 	STRB    R1, [R0]
 	POP {R0, R1}
 	BX LR
 
 
-; Altera: R0-R3
-; Mostra a mensagem da tabuada
 DisplayMsg
+	PUSH{LR}
+	BL LimpaDisplay
+	
 	; Carrega o numero atual da tabuada
-    LDRB R0, =NUM_TAB_ADDR
+    LDR R0, =NUM_TAB_ADDR
     LDRB R1,[R0]
 	; Carrega o resultado da tabela atual
-	LDRB R0, =RESULT_TAB_ADDR
+	LDR R0, =RESULT_TAB_ADDR
 	LDRB R2,[R0]
 	; Calcula o multiplicador da tabela atual
 	UDIV R3,R2,R1 ; R3 := R2/R1
-	
 	; Descobrir como faz o display...
-	BX LR
+	
+	BL EscreveChar
+	MOV R1,#42 ; *
+	BL EscreveChar
+	MOV R1,R3
+	BL EscreveChar
+	MOV R1,#61 ; =
+	BL EscreveChar
+	MOV R3,#10
+	UDIV R4,R2,R3
+	MOV R1,R4
+	BL EscreveChar
+	MLS R1,R2,R3,R4
+	BL EscreveChar
+	
+	POP{PC}
 
 
-; Trata interrupcao do teclado
 IntTeclado
 	PUSH {R0, R1, R2} ; os registradortes que sao usados
 	; Carrega o numero do teclado para R1...
@@ -581,18 +745,18 @@ IntTeclado
 	; Salva a tabuada atual
 	LDR R0, =NUM_TAB_ADDR
 	STRB R1, [R0]
-	
-	MOVT R0,0x2000  	; Carrega o endereço base
+	MOV R0,#0
+	MOVT R0,#0x2000  	; Carrega o endereço base
 	; Calcula o endereço da tabuada a ser utilizada
-	ADD R0, R1 LSL 3 	; R0 := R0 + R1 << 3
+	ADD R0, R1	; R0 := R0 + R1
 	; Carrega o valor previo da tabuada
 	LDRB R2,[R0] 		; R2 := [R0]
 	; Soma um ao valor
-	ADD R2, 1
+	ADD R2,#1
 	; Ve se estourou a tabuada
-	CMP R2, 10
-	IT EQ
-		MOVEQ R2, 0
+	CMP R2, #10
+	IT GE
+		MOVGE R2, #0
 	; Salva o novo valor da tabuada do numero
 	STRB R2,[R0] 		; [R0] := R2
 	MUL R1, R2			; R1 := R1*R2
@@ -602,6 +766,86 @@ IntTeclado
 	
 	POP {R0, R1, R2} ; os registradortes que sao usados
 	BX LR
+
+VarreTeclado
+	MOV R3, #10
+	; Le e escreve na primeira coluna
+	LDR R0, =GPIO_PORTM_DATA_R
+	LDR R1,[R0]
+	AND R1, #2_00001111
+	ORR R1, #2_11100000
+	STRB R1,[R0]
+	LDR R0, =GPIO_PORTL_DATA_R
+	LDR R1,[R0]
+	CMP R1,#2_1110
+	IT EQ
+		MOVEQ R3,#1
+	CMP R1,#2_1101
+	IT EQ
+		MOVEQ R3,#4
+	CMP R1,#2_1011
+	IT EQ
+		MOVEQ R3,#7
+	CMP R3,#10
+	IT NE
+		BNE finalVarreTeclado
 	
+	; Le e escreve na segunda coluna
+	LDR R0, =GPIO_PORTM_DATA_R
+	LDR R1,[R0]
+	AND R1, #2_00001111
+	ORR R1, #2_11010000
+	STRB R1,[R0]
+	LDR R0, =GPIO_PORTL_DATA_R
+	LDR R1,[R0]
+	AND R1,#2_1111
+	CMP R1,#2_1110
+	IT EQ
+		MOVEQ R3,#2
+	CMP R1,#2_1101
+	IT EQ
+		MOVEQ R3,#5
+	CMP R1,#2_1011
+	IT EQ
+		MOVEQ R3,#8
+	CMP R3,#10
+	IT NE
+		BNE finalVarreTeclado
+	
+	; Le e escreve na segunda coluna
+	LDR R0, =GPIO_PORTM_DATA_R
+	LDR R1,[R0]
+	AND R1, #2_00001111
+	ORR R1, #2_10110000
+	STRB R1,[R0]
+	LDR R0, =GPIO_PORTL_DATA_R
+	LDR R1,[R0]
+	AND R1,#2_1111
+	CMP R1,#2_1110
+	IT EQ
+		MOVEQ R3,#3
+	CMP R1,#2_1101
+	IT EQ
+		MOVEQ R3,#6
+	CMP R1,#2_1011
+	IT EQ
+		MOVEQ R3,#9
+	CMP R3,#10
+	IT NE
+		BNE finalVarreTeclado
+finalVarreTeclado
+	BX LR
+
+
+setTeclado
+	LDR R0, =NUM_TAB_ADDR
+	STRB R3,[R0]
+	MOV R1, R3
+	PUSH {LR}
+	BL IntTeclado
+	POP {PC}
+
+
+
 	ALIGN                           ; garante que o fim da se��o est� alinhada 
     END                             ; fim do arquivo

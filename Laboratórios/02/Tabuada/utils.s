@@ -292,6 +292,29 @@ SysTick_Wait1ms_loop
 SysTick_Wait1ms_done
 	POP {R4, PC}                        ;return
 
+
+
+		EXPORT SysTick_Wait1us
+
+DELAY1US EQU 80;número de ciclos de clock para cont
+;1us, (assumindo 80 MHz) 80 x 12,5 ns = 1 us
+
+SysTick_Wait1us
+	PUSH { R4, LR} ;salva o valor atual de R4 e LR
+	MOVS R4, R0 ;R4 = R0 numEsperasRestantes
+	;com atualização dos flags
+	BEQ SysTick_Wait1us_done
+	;Se o numEsperasRestantes == 0, vai para o fim
+SysTick_Wait1us_loop
+	LDR R0, =DELAY1US ;R0 = DELAY1US (número de ticks
+	;para contar 1us)
+	BL SysTick_Wait ;chama rotina (espera 1us)
+	SUBS R4, R4, #1 ;R4 = R4 - 1;numEsperasRestantes--
+	BHI SysTick_Wait1us_loop
+	;se (numEsperasRestantes > 0), espera mais 1us
+SysTick_Wait1us_done
+	POP { R4, PC} ;return
+
 ; -------------------------------------------------------------------------------------------------------------------------
 ; Fim do Arquivo
 ; -------------------------------------------------------------------------------------------------------------------------

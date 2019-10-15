@@ -45,78 +45,50 @@
 		IMPORT  SetTrans
 		IMPORT 	SysTick_Wait1ms
 		IMPORT 	SysTick_Init
+		IMPORT  VarreTeclado
+		IMPORT  IntTeclado
+		IMPORT  DisplayMsg	
+		IMPORT  ZeraTabs
+		IMPORT  IniTabs
+		IMPORT  setTeclado
+		IMPORT  IniDisplay
+
 ; -------------------------------------------------------------------------------
 ; Função main()
 Start  			
 	BL SysTick_Init
 	BL GPIO_Init                 ;Chama a subrotina que inicializa os GPIO
-	MOV R5,#1
-	MOV R6,#0
+	BL IniTabs
+	BL IniDisplay
+	MOV R10,#10
 MainLoop
-	BL PortJ_Input				 ;Chama a subrotina que lê o estado das chaves e coloca o resultado em R0
 	
-Verifica_Nenhuma
-	CMP	R0, #2_00000011			 ;Verifica se nenhuma chave está pressionada
-	BNE Verifica_SW1			 ;Se o teste viu que tem pelo menos alguma chave pressionada pula
-	B Passo					 	 ;Se o teste viu que nenhuma chave está pressionada, volta para o laço principal
-Verifica_SW1	
-	CMP R0, #2_00000010			 ;Verifica se somente a chave SW1 está pressionada
-	BNE Verifica_SW2             ;Se o teste falhou, pula
-	ADD R5,R5,#1
-	B Passo                   ;Volta para o laço principal
-Verifica_SW2	
-	CMP R0, #2_00000001			 ;Verifica se somente a chave SW2 está pressionada
-	BNE Verifica_Ambas           ;Se o teste falhou, pula
-	SUB R5,R5,#1
-	B Passo                   ;Volta para o laço principal	
-Verifica_Ambas
-	B Passo			 ;Chamar a função para não acender nenhum LED
-
-Passo
-	CMP R5,#10
+	BL VarreTeclado
+	MOV R10,R3
+	MOV R0,#20
+	BL SysTick_Wait1ms
+	BL VarreTeclado
+	MOV R9, R3
+	MOV R0,#20
+	BL SysTick_Wait1ms
+	BL VarreTeclado
+	MOV R8, R3
+	CMP R10,#10
 	IT EQ
-		MOVEQ R5,#9
-	CMP R5,#0
-	IT EQ
-		MOVEQ R5,#1
-	ADD R6,R6,R5
-	CMP R6,#100
-	IT GE
-		SUBGE R6,R6,#100
-	MOV R7,#0
+		BEQ Display
+	CMP R10,R9
+	IT NE
+		BNE Display
+	CMP R10,R8
+	IT NE
+		BNE Display
+	MOV R10, R3
+	BL setTeclado
 	
 Display
-; escreve digito mais significativo
-	MOV R4, R6
-	MOV R10,#10
-	UDIV R4,R4,R10
-	BL WrtDig
+	BL DisplayMsg
 	
-	MOV R4,#2_00000000
-	MOV R3,#2_00010000
-	BL SetTrans
-	MOV R0,#2
-	BL SysTick_Wait1ms
-	
-; escreve digito menos significativo	
-	MOV R4, R6
-	MOV R10,#10
-	UDIV R4,R4,R10
-	MLS R4,R10,R4,R6
-	BL WrtDig
-	
-	MOV R4,#2_00000000
-	MOV R3,#2_00100000
-	BL SetTrans
-	
-	MOV R0,#2
-	BL SysTick_Wait1ms
-	ADD R7,#1
-	CMP R7,#100
-	IT EQ
-		BEQ MainLoop
-	B Display                   ;Volta para o laço principal	
-	BEQ MainLoop
+	B MainLoop
 	NOP
 	
     ALIGN                        ;Garante que o fim da seção está alinhada 
