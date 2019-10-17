@@ -41,7 +41,6 @@
 		IMPORT  GPIO_Init
         IMPORT  PortF_Output
         IMPORT  PortJ_Input
-		IMPORT  WrtDig
 		IMPORT  SetTrans
 		IMPORT 	SysTick_Wait1ms
 		IMPORT 	SysTick_Init
@@ -56,7 +55,7 @@
 ; -------------------------------------------------------------------------------
 ; Função main()
 Start  			
-	BL SysTick_Init
+    BL SysTick_Init
 	BL GPIO_Init                 ;Chama a subrotina que inicializa os GPIO
 	BL IniTabs
 	BL IniDisplay

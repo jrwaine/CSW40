@@ -294,8 +294,8 @@ CONT_TAB6_ADDR			EQU 0x20000006
 CONT_TAB7_ADDR			EQU 0x20000007
 CONT_TAB8_ADDR			EQU 0x20000008
 CONT_TAB9_ADDR			EQU 0x20000009
-NUM_TAB_ADDR			EQU 0x20000050 ; numero da tabuada atual
-RESULT_TAB_ADDR			EQU 0x20000058 ; resutlado da tabuada atual
+NUM_TAB_ADDR			EQU 0x2000000A ; numero da tabuada atual
+RESULT_TAB_ADDR			EQU 0x2000000B ; resutlado da tabuada atual
 
 ; -------------------------------------------------------------------------------
 ; �rea de C�digo - Tudo abaixo da diretiva a seguir ser� armazenado na mem�ria de 
@@ -306,17 +306,14 @@ RESULT_TAB_ADDR			EQU 0x20000058 ; resutlado da tabuada atual
         EXPORT GPIO_Init            ; Permite chamar GPIO_Init de outro arquivo
 		EXPORT PortF_Output			; Permite chamar PortN_Output de outro arquivo
 		EXPORT PortJ_Input          ; Permite chamar PortJ_Input de outro arquivo
-		EXPORT WrtDig
 		EXPORT SetTrans
 		EXPORT VarreTeclado
 		EXPORT IntTeclado
-		EXPORT DisplayMsg	
 		EXPORT ZeraTabs
 		EXPORT IniTabs
 		EXPORT setTeclado
-		EXPORT IniDisplay
-		IMPORT SysTick_Wait1us
 	
+	LTORG 
 
 ;--------------------------------------------------------------------------------
 ; Fun��o GPIO_Init
@@ -494,162 +491,6 @@ SetTrans
 	STR R4,[R1]
 	BX LR
 	
-WrtDig
-	CMP R4, #0
-	ITT EQ
-		MOVEQ R0,#2_00001111
-		MOVEQ R1,#2_00110000
-	CMP R4, #1
-	ITT EQ
-		MOVEQ R0,#2_00000110
-		MOVEQ R1,#2_00000000
-	CMP R4, #2
-	ITT EQ
-		MOVEQ R0, #2_00001011
-		MOVEQ R1, #2_01010000
-	CMP R4, #3
-	ITT EQ
-		MOVEQ R0, #2_00001111
-		MOVEQ R1, #2_01000000
-	CMP R4, #4
-	ITT EQ
-		MOVEQ R0, #2_00000110
-		MOVEQ R1, #2_01100000
-	CMP R4, #5
-	ITT EQ
-		MOVEQ R0, #2_00001101
-		MOVEQ R1, #2_01100000
-	CMP R4, #6
-	ITT EQ
-		MOVEQ R0, #2_00001101
-		MOVEQ R1, #2_01110000
-	CMP R4, #7
-	ITT EQ
-		MOVEQ R0, #2_00000111
-		MOVEQ R1, #2_00000000
-	CMP R4, #8
-	ITT EQ
-		MOVEQ R0, #2_00001111
-		MOVEQ R1, #2_01110000
-	CMP R4, #9
-	ITT EQ
-		MOVEQ R0, #2_00001111
-		MOVEQ R1, #2_01100000
-	LDR R2,=GPIO_PORTQ_DATA_R
-	LDR R3,=GPIO_PORTA_AHB_DATA_R
-	STR R0,[R2]
-	STR R1,[R3]
-	BX LR
-
-	LTORG 
-
-AtivaEscrita
-	LDR R0, =GPIO_PORTM_DATA_R
-	LDR R1,[R0]
-	AND R1, #2_11111000
-	ORR R1, #2_00000100
-	STRB R1,[R0]
-	BX LR
-
-AtivaReset
-	LDR R0, =GPIO_PORTM_DATA_R
-	LDR R1,[R0]
-	AND R1, #2_11111110
-	ORR R1, #2_00000001
-	STRB R1,[R0]
-	BX LR
-
-DesativaRS
-	LDR R0, =GPIO_PORTM_DATA_R
-	LDR R1,[R0]
-	AND R1, #2_11111110
-	ORR R1, #2_00000000
-	STRB R1,[R0]
-	BX LR
-
-AtivaEnable
-	LDR R0, =GPIO_PORTM_DATA_R
-	LDR R1,[R0]
-	AND R1, #2_11111011
-	ORR R1, #2_00000100
-	STRB R1,[R0]
-	BX LR
-
-DesativaEnable
-	LDR R0, =GPIO_PORTM_DATA_R
-	LDR R1,[R0]
-	AND R1, #2_11111011
-	ORR R1, #2_00000000
-	STRB R1,[R0]
-	BX LR
-
-DesativaTudo
-	LDR R0, =GPIO_PORTM_DATA_R
-	LDR R1,[R0]
-	AND R1, #2_11111000
-	ORR R1, #2_00000000
-	STRB R1,[R0]
-	BX LR
-
-; R1 eh caracter em ASC2
-EscreveChar
-	PUSH{R0, R1, LR}
-	LDR R0,=GPIO_PORTK_DATA_R
-	STR R1,[R0]
-	BL AtivaEscrita
-	BL AtivaEnable
-	BL AtivaReset
-	MOV R0,#10
-	BL SysTick_Wait1us
-	BL DesativaTudo
-	MOV R0,#40
-	BL SysTick_Wait1us
-	POP{R0, R1, PC}
-	
-LimpaDisplay
-	PUSH{LR}
-	BL AtivaEscrita
-	;Limpar o display e levar o cursor para o home
-	MOV R1,#0x01
-	STR R1,[R2]
-	BL DesativaEnable
-	MOV R0, #80
-	BL SysTick_Wait1us
-	POP {PC}
-	
-IniDisplay
-	PUSH {LR}
-	BL AtivaEscrita
-	; Inicializar no modo 2 linhas / caractere matriz 5x7
-	LDR R2, =GPIO_PORTK_DATA_R
-	MOV R1, #0x38
-	STR R1, [R2]
-	BL DesativaEnable
-	MOV R0, #80
-	BL SysTick_Wait1us
-	BL AtivaEscrita
-	; Cursor com autoincremento para direita
-	MOV R1,#0x06
-	STR R1,[R2]
-	BL DesativaEnable
-	MOV R0, #80
-	BL SysTick_Wait1us
-	; Configurar o cursor (habilitar o display + cursor + não-pisca)
-	MOV R1,#0x0E
-	STR R1,[R2]
-	BL DesativaEnable
-	MOV R0, #80
-	BL SysTick_Wait1us
-	BL AtivaEscrita
-	;Limpar o display e levar o cursor para o home
-	MOV R1,#0x01
-	STR R1,[R2]
-	BL DesativaEnable
-	MOV R0, #80
-	BL SysTick_Wait1us
-	POP {PC}
-	
-	
 IniTabs
 	PUSH {R0, R1}
     MOV     R1, #2_1010
@@ -705,37 +546,6 @@ ZeraTabs
 	STRB    R1, [R0]
 	POP {R0, R1}
 	BX LR
-
-
-DisplayMsg
-	PUSH{LR}
-	BL LimpaDisplay
-	
-	; Carrega o numero atual da tabuada
-    LDR R0, =NUM_TAB_ADDR
-    LDRB R1,[R0]
-	; Carrega o resultado da tabela atual
-	LDR R0, =RESULT_TAB_ADDR
-	LDRB R2,[R0]
-	; Calcula o multiplicador da tabela atual
-	UDIV R3,R2,R1 ; R3 := R2/R1
-	; Descobrir como faz o display...
-	
-	BL EscreveChar
-	MOV R1,#42 ; *
-	BL EscreveChar
-	MOV R1,R3
-	BL EscreveChar
-	MOV R1,#61 ; =
-	BL EscreveChar
-	MOV R3,#10
-	UDIV R4,R2,R3
-	MOV R1,R4
-	BL EscreveChar
-	MLS R1,R2,R3,R4
-	BL EscreveChar
-	
-	POP{PC}
 
 
 IntTeclado
