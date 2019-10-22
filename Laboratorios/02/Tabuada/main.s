@@ -39,7 +39,6 @@
         ;IMPORT <func>              ; Permite chamar dentro deste arquivo uma 
 									; função <func>
 		IMPORT  GPIO_Init
-        IMPORT  PortF_Output
         IMPORT  PortJ_Input
 		IMPORT  SetTrans
 		IMPORT 	SysTick_Wait1ms

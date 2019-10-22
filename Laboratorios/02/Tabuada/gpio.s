@@ -113,6 +113,12 @@ GPIO_PORTJ_AHB_DEN_R     	EQU    0x4006051C
 GPIO_PORTJ_AHB_PUR_R     	EQU    0x40060510	
 GPIO_PORTJ_AHB_DATA_R    	EQU    0x400603FC
 GPIO_PORTJ               	EQU    2_000000100000000
+GPIO_PORTJ_AHB_IM_R     	EQU	   0x40060410
+GPIO_PORTJ_AHB_IS_R         EQU	   0x40060404
+GPIO_PORTJ_AHB_IBE_R        EQU	   0x40060408
+GPIO_PORTJ_AHB_IEV_R    	EQU	   0x4006040C
+GPIO_PORTJ_AHB_ICR_R        EQU    0x4006041C
+GPIO_PORTJ_AHB_RIS_R    	EQU	   0x40060414
 ; PORT K
 GPIO_PORTK_DATA_BITS_R  EQU    0x40061000
 GPIO_PORTK_DATA_R       EQU    0x400613FC
@@ -284,6 +290,11 @@ GPIO_PORTQ_PP_R         EQU    0x40066FC0
 GPIO_PORTQ_PC_R         EQU    0x40066FC4
 GPIO_PORTQ              EQU    2_100000000000000
 
+;NVIC
+NVIC_EN1_R              	EQU 	 0xE000E104
+NVIC_PRI12_R        	    EQU      0xE000E430
+	
+
 ; ENDEREÇOS DE MEMÓRIA DA TABUADA (contem os multiplicadores)
 CONT_TAB1_ADDR			EQU 0x20000001
 CONT_TAB2_ADDR			EQU 0x20000002
@@ -296,6 +307,7 @@ CONT_TAB8_ADDR			EQU 0x20000008
 CONT_TAB9_ADDR			EQU 0x20000009
 NUM_TAB_ADDR			EQU 0x2000000A ; numero da tabuada atual
 RESULT_TAB_ADDR			EQU 0x2000000B ; resutlado da tabuada atual
+PISCA_LEDS_ADDR			EQU 0x2000000C 
 
 ; -------------------------------------------------------------------------------
 ; �rea de C�digo - Tudo abaixo da diretiva a seguir ser� armazenado na mem�ria de 
@@ -304,7 +316,6 @@ RESULT_TAB_ADDR			EQU 0x2000000B ; resutlado da tabuada atual
 
 		; Se alguma fun��o do arquivo for chamada em outro arquivo	
         EXPORT GPIO_Init            ; Permite chamar GPIO_Init de outro arquivo
-		EXPORT PortF_Output			; Permite chamar PortN_Output de outro arquivo
 		EXPORT PortJ_Input          ; Permite chamar PortJ_Input de outro arquivo
 		EXPORT SetTrans
 		EXPORT VarreTeclado
@@ -312,6 +323,8 @@ RESULT_TAB_ADDR			EQU 0x2000000B ; resutlado da tabuada atual
 		EXPORT ZeraTabs
 		EXPORT IniTabs
 		EXPORT setTeclado
+		EXPORT GPIOPortJ_Handler
+		IMPORT LimpaDisplay
 	
 	LTORG 
 
@@ -442,12 +455,12 @@ EsperaGPIO  LDR     R1, [R0]						;L� da mem�ria o conte�do do endere�o 
             STR     R1, [R0]	
  
             LDR     R0, =GPIO_PORTJ_AHB_DEN_R			;Carrega o endere�o do DEN
-			MOV     R1, #2_00000011                     ;Ativa os pinos PJ0 e PJ1 como I/O Digital      
+			MOV     R1, #2_00000001                     ;Ativa os pinos PJ0 como I/O Digital      
             STR     R1, [R0]                            ;Escreve no registrador da mem�ria funcionalidade digital
 			
 ; 7. Para habilitar resistor de pull-up interno, setar PUR para 1
 			LDR     R0, =GPIO_PORTJ_AHB_PUR_R			;Carrega o endere�o do PUR para a porta J
-			MOV     R1, #2_00000011						;Habilitar funcionalidade digital de resistor de pull-up 
+			MOV     R1, #2_00000001						;Habilitar funcionalidade digital de resistor de pull-up 
                                                         ;nos bits 0 e 1
             STR     R1, [R0]							;Escreve no registrador da mem�ria do resistor de pull-up
 			
@@ -456,22 +469,42 @@ EsperaGPIO  LDR     R1, [R0]						;L� da mem�ria o conte�do do endere�o 
                                                         ;nos bits 0 a 3
             STR     R1, [R0]							;Escreve no registrador da mem�ria do resistor de pull-up
 			
-            
+;8. Configurar as interrupcoes da porta J
+			LDR     R0, =NVIC_EN1_R
+			MOV     R1, #1
+			LSL     R1, R1, #19
+			STR     R1, [R0]
+			
+			LDR     R0, =NVIC_PRI12_R
+			MOV     R1, #1
+			LSL     R1, R1, #29
+			STR 	R1, [R0]
+;J0 = DESCIDA
+			LDR		R0, =GPIO_PORTJ_AHB_IM_R
+			MOV		R1, #2_0
+			STR 	R1, [R0]
+			
+			LDR		R0, =GPIO_PORTJ_AHB_IS_R
+			MOV		R1, #2_0
+			STR 	R1, [R0]
+			
+			LDR		R0, =GPIO_PORTJ_AHB_IBE_R
+			MOV		R1, #2_0
+			STR 	R1, [R0]
+			
+			LDR		R0, =GPIO_PORTJ_AHB_IEV_R
+			MOV		R1, #2_0
+			STR 	R1, [R0]
+			
+			LDR		R0, =GPIO_PORTJ_AHB_ICR_R    
+			MOV		R1, #2_1
+			STR 	R1, [R0]
+			
+			LDR		R0, =GPIO_PORTJ_AHB_IM_R    
+			MOV		R1, #2_1
+			STR 	R1, [R0]
 ;retorno            
 			BX      LR
-
-; -------------------------------------------------------------------------------
-; Fun��o PortF_Output
-; Par�metro de entrada: R0 --> se os BIT4 e BIT0 est�o ligado ou desligado
-; Par�metro de sa�da: N�o tem
-PortF_Output
-	LDR	R1, =GPIO_PORTF_AHB_DATA_R		    ;Carrega o valor do offset do data register
-	;Read-Modify-Write para escrita
-	LDR R2, [R1]
-	BIC R2, #2_00010001                     ;Primeiro limpamos os dois bits do lido da porta R2 = R2 & 11101110
-	ORR R0, R0, R2                          ;Fazer o OR do lido pela porta com o par�metro de entrada
-	STR R0, [R1]                            ;Escreve na porta F o barramento de dados dos pinos F4 e F0
-	BX LR									;Retorno
 
 ; -------------------------------------------------------------------------------
 ; Fun��o PortJ_Input
@@ -479,8 +512,20 @@ PortF_Output
 ; Par�metro de sa�da: R0 --> o valor da leitura
 PortJ_Input
 	LDR	R1, =GPIO_PORTJ_AHB_DATA_R		    ;Carrega o valor do offset do data register
-	LDR R0, [R1]                            ;L� no barramento de dados dos pinos [J1-J0]
+	LDR R0, [R1]                            ;L� no barramento de dados dos pinos [J0]
 	BX LR									;Retorno
+
+
+GPIOPortJ_Handler
+	PUSH{LR}
+	LDR R0,=GPIO_PORTJ_AHB_ICR_R    
+	MOV R1,#1
+	STR R1,[R0]
+	
+	BL LimpaDisplay  
+	BL ZeraTabs
+	
+	POP{PC}
 
 ; R3 = PORT B
 ; R4 = PORT P
@@ -517,6 +562,8 @@ IniTabs
 	STRB    R1, [R0]
 	LDR     R0, =NUM_TAB_ADDR
 	STRB    R1, [R0]
+	LDR     R0, =PISCA_LEDS_ADDR
+	STRB    R1, [R0]
 	POP {R0, R1}
 	BX LR
 
@@ -544,6 +591,8 @@ ZeraTabs
 	STRB    R1, [R0]
 	LDR     R0, =RESULT_TAB_ADDR
 	STRB    R1, [R0]
+	LDR     R0, =PISCA_LEDS_ADDR
+	STRB    R1, [R0]
 	POP {R0, R1}
 	BX LR
 
@@ -567,6 +616,15 @@ IntTeclado
 	CMP R2, #10
 	IT GE
 		MOVGE R2, #0
+	CMP R2,#9
+	ITT EQ
+		LDREQ R0,=PISCA_LEDS_ADDR
+		STRBEQ R2,[R0]
+	
+	MOV R0,#0
+	MOVT R0,#0x2000  	; Carrega o endereço base
+	; Calcula o endereço da tabuada a ser utilizada
+	ADD R0, R1	; R0 := R0 + R1
 	; Salva o novo valor da tabuada do numero
 	STRB R2,[R0] 		; [R0] := R2
 	MUL R1, R2			; R1 := R1*R2
@@ -622,7 +680,7 @@ VarreTeclado
 	IT NE
 		BNE finalVarreTeclado
 	
-	; Le e escreve na segunda coluna
+	; Le e escreve na terceira coluna
 	LDR R0, =GPIO_PORTM_DATA_R
 	LDR R1,[R0]
 	AND R1, #2_00001111
