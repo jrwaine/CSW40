@@ -1,0 +1,5 @@
+acender leds
+mostrar display
+ler teclado
+interrupcao
+rodar motor
