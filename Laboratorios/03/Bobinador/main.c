@@ -4,6 +4,7 @@
 // Prof. Guilherme Peron
 
 #include <stdint.h>
+#include "tm4c1294ncpdt.h"
 
 void led_Output(uint8_t leds);
 int leTeclado(void);
@@ -26,12 +27,67 @@ void SysTick_Wait1us(uint32_t delay);
 #define ADDR_ANGULO         (*((volatile uint32_t *)0x20000004))
 #define ADDR_NUM_VOLTAS     (*((volatile uint32_t *)0x20000008))
 #define ADDR_RESET          (*((volatile uint32_t *)0x2000000C))
+#define ADDR_SENTIDO        (*((volatile uint32_t *)0x20000010))
+#define RATIO (6)
 
 enum{ZERA_TUDO,
 	PEDE_INFO,
 	ATUA,
 	FIM
 }Estados;
+
+
+void rodaHorario(void)
+{
+    if(GPIO_PORTH_AHB_DATA_R == 0xF || GPIO_PORTH_AHB_DATA_R == 0xE)
+			 GPIO_PORTH_AHB_DATA_R = 0x7;
+		else if (GPIO_PORTH_AHB_DATA_R == 0x7)
+			 GPIO_PORTH_AHB_DATA_R = 0xB;
+		else if (GPIO_PORTH_AHB_DATA_R == 0xB)
+			 GPIO_PORTH_AHB_DATA_R = 0xD;
+		else if (GPIO_PORTH_AHB_DATA_R == 0xD)
+			 GPIO_PORTH_AHB_DATA_R = 0xE;
+}
+
+
+void rodaAntiHorario(void)
+{
+    if(GPIO_PORTH_AHB_DATA_R == 0xF || GPIO_PORTH_AHB_DATA_R == 0x7)
+			 GPIO_PORTH_AHB_DATA_R = 0xE;
+		else if (GPIO_PORTH_AHB_DATA_R == 0xE)
+			 GPIO_PORTH_AHB_DATA_R = 0xD;
+		else if (GPIO_PORTH_AHB_DATA_R == 0xD)
+			 GPIO_PORTH_AHB_DATA_R = 0xB;
+		else if (GPIO_PORTH_AHB_DATA_R == 0xB)
+			 GPIO_PORTH_AHB_DATA_R = 0x7;
+}
+
+
+
+void rodaHorarioMeioPasso(void)
+{
+    if(GPIO_PORTH_AHB_DATA_R == 0xF || GPIO_PORTH_AHB_DATA_R == (0xE & 0x7))
+			 GPIO_PORTH_AHB_DATA_R = 0x7 & 0xB;
+		else if (GPIO_PORTH_AHB_DATA_R == (0x7 & 0xB))
+			 GPIO_PORTH_AHB_DATA_R = (0xB & 0xD);
+		else if (GPIO_PORTH_AHB_DATA_R == (0xB & 0xD))
+			 GPIO_PORTH_AHB_DATA_R = (0xD & 0xE);
+		else if (GPIO_PORTH_AHB_DATA_R == (0xD & 0xE))
+			 GPIO_PORTH_AHB_DATA_R = 0xE & 0x7;
+}
+
+
+void rodaAntiHorarioMeioPasso(void)
+{
+    if(GPIO_PORTH_AHB_DATA_R == 0xF || GPIO_PORTH_AHB_DATA_R == (0xE & 0x7))
+			 GPIO_PORTH_AHB_DATA_R = 0xD & 0xE;
+		else if (GPIO_PORTH_AHB_DATA_R == (0x7 & 0xB))
+			 GPIO_PORTH_AHB_DATA_R = (0x7 & 0xE);
+		else if (GPIO_PORTH_AHB_DATA_R == (0xB & 0xD))
+			 GPIO_PORTH_AHB_DATA_R = (0xB & 0x7);
+		else if (GPIO_PORTH_AHB_DATA_R == (0xD & 0xE))
+			 GPIO_PORTH_AHB_DATA_R = 0xB & 0xD;
+}
 
 int estado = ZERA_TUDO;
 
@@ -112,12 +168,8 @@ void pedeInfo(void)
         estado = ZERA_TUDO; 
         return;
     }
-
-    if(sentido == 1)
-        ADDR_VELOCIDADE = vel;
-    else
-        ADDR_VELOCIDADE = -vel;
-    
+	  ADDR_SENTIDO = sentido;
+    ADDR_VELOCIDADE = vel;
     ADDR_NUM_VOLTAS = voltas;
     estado = ATUA;
 }
@@ -125,27 +177,50 @@ void pedeInfo(void)
 
 void atua(void)
 {
-    while(ADDR_ANGULO/360 < ADDR_NUM_VOLTAS && !ADDR_RESET)
+	  GPIO_PORTH_AHB_DATA_R = 0xF;
+	  int ratio = RATIO;
+    while((ADDR_ANGULO/360/RATIO) < (ADDR_NUM_VOLTAS) && !ADDR_RESET)
     {
-        if((int)ADDR_VELOCIDADE < 0)
+        if(ADDR_SENTIDO == 2)
         {
             // da um passo para o sentido anti horario
-            int giro = -ADDR_VELOCIDADE;
-            // TODO
-            
+            int giro = ADDR_VELOCIDADE;
+            if(ADDR_VELOCIDADE == 1)
+						{
+						    rodaAntiHorario();
+						    ADDR_ANGULO += 1;
+						}
+						else if (ADDR_VELOCIDADE == 2)
+						{
+                rodaAntiHorarioMeioPasso();
+							  ADDR_ANGULO += 1;
+						}
+						
             // soma o angulo rotacionado
             // TODO
             
             // faz o passo do led
-            led_Output(((ADDR_ANGULO)%360)/8);
+            led_Output(1 << (((ADDR_ANGULO/RATIO)%360)/45));
         }
         else
         {
             // da um passo para o sentido horario
-            int giro = ADDR_VELOCIDADE;
+            if(ADDR_VELOCIDADE == 1)
+						{
+						    rodaHorario();
+						    ADDR_ANGULO += 1;
+						}
+						else if (ADDR_VELOCIDADE == 2)
+						{
+                rodaHorarioMeioPasso();
+							  ADDR_ANGULO += 1;
+						}
+            
+						
             // soma o angulo rotacionado
-            led_Output((-(ADDR_ANGULO)%360)/8);
+            led_Output(1 << (((360-((ADDR_ANGULO/RATIO)%360))/45)));
         }
+				escreveDisplay();
     }
 		if(ADDR_RESET)
 			estado = ZERA_TUDO;
@@ -168,10 +243,6 @@ void loop()
 {
     while(1)
     {
-        /*ADDR_ANGULO = 0;
-        ADDR_VELOCIDADE = 0;
-        int num = leTecladoSemBounce();
-        led_Output(num & 0xFF);*/
         switch(estado)
         {
             case ZERA_TUDO:
@@ -194,7 +265,7 @@ void loop()
 
 int main(void)
 {
-    PLL_Init();
+  	PLL_Init();
     SysTick_Init();
     GPIO_Init();
     iniDisplay();

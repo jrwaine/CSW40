@@ -62,6 +62,7 @@ PLL_Init
     ; 1) Depois que a configura��o for pronta, o PIOSC prov� o clock do sistema. Este,
     ;    passo garante que se a fun��o j� tenha sido chamada antes, o sistema desabilite
     ;    o clock do PLL antes de configur�-lo novamente.
+
     LDR R1, =SYSCTL_RSCLKCFG_R                 ; R1 = SYSCTL_RSCLKCFG_R (ponteiro)
     LDR R0, [R1]                               ; R0 = [R1] (value)
     BIC R0, R0, #SYSCTL_RSCLKCFG_USEPLL        ; R0 = R0&~SYSCTL_RSCLKCFG_USEPLL (limpar o bit USEPLL bit para n�o clockar pelo PLL)

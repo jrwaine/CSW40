@@ -11,7 +11,8 @@
 #define ADDR_ANGULO         (*((volatile uint32_t *)0x20000004))
 #define ADDR_NUM_VOLTAS     (*((volatile uint32_t *)0x20000008))
 #define ADDR_RESET          (*((volatile uint32_t *)0x2000000C))
-
+#define ADDR_SENTIDO        (*((volatile uint32_t *)0x20000010))
+#define RATIO (6)
 
 void PLL_Init(void);
 void SysTick_Init(void);
@@ -36,7 +37,7 @@ void GPIO_Init(void)
 		ports |= GPIO_PORTM;
 		ports |= GPIO_PORTP;
 		ports |= GPIO_PORTQ;
-    SYSCTL_RCGCGPIO_R |= ports;
+    SYSCTL_RCGCGPIO_R = ports;
 	//1b.   ap�s isso verificar no PRGPIO se a porta est� pronta para uso.
     while((SYSCTL_PRGPIO_R & (ports) ) != (ports) ){};
 	
@@ -151,7 +152,7 @@ void GPIOPortJ_Handler()
 
 void led_Output(uint8_t leds)
 {
-    GPIO_PORTA_AHB_DATA_R = 0xF0 & leds; // upepr
+    GPIO_PORTA_AHB_DATA_R = 0xF0 & leds; // upper
     GPIO_PORTQ_DATA_R = 0x0F & leds; // lower
     GPIO_PORTP_DATA_R = 0x20; // transistor
 }
@@ -159,7 +160,6 @@ void led_Output(uint8_t leds)
 
 void ativaRS(void)
 {
-    GPIO_PORTM_DATA_R &= 0xFE;
     GPIO_PORTM_DATA_R |= 0x01;
 }
 
@@ -172,7 +172,6 @@ void desativaRS(void)
 
 void ativaEnable()
 {
-    GPIO_PORTM_DATA_R &= 0xFB;
     GPIO_PORTM_DATA_R |= 0x04;
 }
 
@@ -185,8 +184,7 @@ void desativaEnable()
 
 void ativaRW()
 {
-    GPIO_PORTM_DATA_R &= 0xFD;
-    GPIO_PORTM_DATA_R &= 0x02;
+    GPIO_PORTM_DATA_R |= 0x02;
 }
 
 
@@ -209,7 +207,7 @@ void limpaDisplay()
     ativaEnable();
     GPIO_PORTK_DATA_R = 0x01;
     desativaEnable();
-    SysTick_Wait1us(40);
+    SysTick_Wait1us(1640);
 }
 
 
@@ -219,9 +217,9 @@ void escreveChar(char c)
     ativaRS();
     desativaRW();
     ativaEnable();
-    SysTick_Wait1us(20);
+    SysTick_Wait1us(100);
     desativaTudo();
-    SysTick_Wait1us(40);
+    SysTick_Wait1us(400);
 }
 
 
@@ -274,11 +272,7 @@ void escreveDisplay()
     char str[16];
     
 	strcpy(str, "S:");
-    char sent[1];
-    if (ADDR_VELOCIDADE > 0)
-        sent[0] = 49;
-    else
-        sent[0] = 48;
+    char sent[1] = {(char)(ADDR_SENTIDO)+48};
     strcat(str, sent);
     
 		strcat(str, " V:");
@@ -286,9 +280,7 @@ void escreveDisplay()
     strcat(str, vel);
     strcat(str, " T:");
     
-		int num_voltas = ADDR_ANGULO/360;
-    if(num_voltas < 0)
-        num_voltas = -num_voltas;
+		int num_voltas = ADDR_NUM_VOLTAS - ADDR_ANGULO/360/RATIO;
 		char voltas[2];
 		voltas[0] = num_voltas/10+48;
 		voltas[1] = num_voltas%10+48;
@@ -330,11 +322,11 @@ void escrevePedeSentido()
 
 void escrevePedeVel()
 {
-    char str[16] = "Vel. (1-2)";
+    char str[16] = "Vel. (1=C 2=M)";
     limpaDisplay();
 
     int i;
-    for(i = 0; i < 10; i++)
+    for(i = 0; i < 14; i++)
         escreveChar(str[i]);
 }
 
