@@ -8,7 +8,9 @@
 #include <string.h>
 
 #define ADDR_VELOCIDADE     (*((volatile uint32_t *)0x20000000))
-#define ADDR_ANGULO         (*((volatile uint32_t *)0x20000000))
+#define ADDR_ANGULO         (*((volatile uint32_t *)0x20000004))
+#define ADDR_NUM_VOLTAS     (*((volatile uint32_t *)0x20000008))
+#define ADDR_RESET          (*((volatile uint32_t *)0x2000000C))
 
 
 void PLL_Init(void);
@@ -136,36 +138,14 @@ void GPIO_Init(void)
     GPIO_PORTJ_AHB_IM_R = 0x1;
 }
 
-// -------------------------------------------------------------------------------
-// Fun��o PortJ_Input
-// L� os valores de entrada do port J
-// Par�metro de entrada: N�o tem
-// Par�metro de sa�da: o valor da leitura do port
-uint32_t PortJ_Input(void)
-{
-	return GPIO_PORTJ_AHB_DATA_R;
-}
-
-// -------------------------------------------------------------------------------
-// Fun��o PortN_Output
-// Escreve os valores no port N
-// Par�metro de entrada: Valor a ser escrito
-// Par�metro de sa�da: n�o tem
-void PortN_Output(uint32_t valor)
-{
-    uint32_t temp;
-    //vamos zerar somente os bits menos significativos
-    //para uma escrita amig�vel nos bits 0 e 1
-    temp = GPIO_PORTN_DATA_R & 0xFC;
-    //agora vamos fazer o OR com o valor recebido na fun��o
-    temp = temp | valor;
-    GPIO_PORTN_DATA_R = temp; 
-}
 
 void GPIOPortJ_Handler()
 {
     GPIO_PORTJ_AHB_ICR_R = 1;
-    // TODO
+    ADDR_VELOCIDADE = 0;
+    ADDR_ANGULO = 0;
+    ADDR_NUM_VOLTAS = 0;
+    ADDR_RESET = 1;
 }
 
 
@@ -175,6 +155,7 @@ void led_Output(uint8_t leds)
     GPIO_PORTQ_DATA_R = 0x0F & leds; // lower
     GPIO_PORTP_DATA_R = 0x20; // transistor
 }
+
 
 void ativaRS(void)
 {
@@ -320,6 +301,7 @@ void escreveDisplay()
     for(i = 0; i < 16; i++)
         escreveChar(str[i]);
 }
+
 
 void escreveFim()
 {
